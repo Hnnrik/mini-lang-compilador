@@ -1,0 +1,81 @@
+<program> => <statement> <program> | e
+
+<block> => "{" <block_rec> "}"
+<block_rec> => <statement><block_rec> | e 
+
+<statement> => <variable-decl> ";"
+              | <assignment> ";"
+              | <print-statement> ";"
+              | <if-statement>
+              | <while-statement>
+              | <return-statement> ";"
+              | <function-decl>
+              | <block>
+
+<function-decl> => "def" <identifier> "(" <formal_params_opt> ")" ":" <type> <block>
+<formal_params_opt> => <formal-params> | e
+
+<formal-params> => <formal-param> <formal-param_list>
+<formal-param_list> => "," <formal-param> <formal-param_list> | e
+<formal-param> => <identifier> ":" <type>
+
+<while-statement> => "while" "(" <expression> ")" <block>
+
+<if-statement> => "if" "(" <expression> ")" <block> <opt_else>
+<opt_else> => "else" <block> | e
+
+<return-statement> => "return" <expression>
+<print-statement> => "print" <string-literal>
+
+<type> => "int" | "real" | "bool" | "void"
+
+<variable-decl> => "var" <identifier> ":" <type> <expression>
+<assignment> => "set" <identifier> "=" <expression>
+
+<expression> => <simple-expression> <relational_list>
+<relational_list> => <relational-op> <simple-expression> <relational_list> | e
+
+<simple-expression> => <term> <additive_list>
+<additive_list> => <additive-op> <term> <additive_list> | e
+
+<term> => <factor> <multiplicative_list>
+<multiplicative_list> => <multiplicative-op> <factor> <multiplicative_list> | e
+
+<factor> => <literal> | <identifier> | <function-call> | <sub-expression> | <unary>
+
+<unary> => <unary_op> <expression_list>
+<unary_op> => "+" | "-" | "not"
+<expression_list> => <expression> <expression_list> | e
+
+<sub-expression> => "(" <expression> ")"
+
+<function-call> => <identifier> "(" <opt_actual_params> ")"
+
+<actual-params> => <expression> <actual-param_list>
+<opt_actual_params> => <actual-params> | e
+
+<actual-param_list> => "," <expression> <actual-param_list> | e
+
+<relational-op> => "<" | ">" | "==" | "!=" | "<=" | ">="
+<additive-op> => "+" | "-" | "or"
+<multiplicative-op> => "*" | "/" | "and"
+
+<identifier> => <id_start> <id_rest_list>
+<id_start> => "_" | <letter>
+<id_rest_list> => <id_rest> <id_rest_list> | e
+<id_rest> => "_" | <letter> | <digit>
+
+<digit> => "0" | ... | "9"
+<letter> => "a" | ... | "z" | "A" | ... | "Z"
+
+<literal> => <integer-literal> | <real-literal> | "true" | "false"
+
+<integer-literal> => <digit> <digit_list>
+<digit_list> => <digit> <digit_list> | e
+
+<real-literal> => <integer-literal> "." <integer-literal>
+
+<string-literal> => " " " <string_char_list> " " "
+<string_char_list> => <string_char> <string_char_list> | e
+<string_char> => <letter> | <digit> | <symbol>
+<symbol> => <any-char-except-quote>
