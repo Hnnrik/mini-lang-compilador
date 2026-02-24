@@ -1,0 +1,7 @@
+// comentário
+//var x : int = 5;
+
+/* comentário
+   multi linha */
+
+print "ok";
