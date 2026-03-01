@@ -93,7 +93,7 @@ class Scanner:
         print(f'<STRING, "{result}">')
 
     def skip_comment(self):
-
+        
         # comentário de linha //
         if self.current_char == "/" and self.peek() == "/":
 
@@ -117,6 +117,14 @@ class Scanner:
                     break
 
                 self.advance()
+        # adicionar comentario de #
+        elif self.current_char == "#" :
+
+            self.advance()
+
+            while self.current_char is not None and self.current_char != "\n":
+                self.advance()
+
     def scan(self):
 
         while self.current_char is not None:
@@ -124,7 +132,7 @@ class Scanner:
             if self.current_char.isspace():
                 self.skip_whitespace()
             
-            elif self.current_char == "/" and (self.peek() == "/" or self.peek() == "*"):
+            elif self.current_char == "/" and (self.peek() == "/" or self.peek() == "*") or self.current_char == "#" :
                 self.skip_comment()
 
             elif self.current_char.isalpha() or self.current_char == "_":
