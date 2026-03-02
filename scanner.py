@@ -6,57 +6,73 @@ KEYWORDS = {
 }
 
 
+class Token:
+    def __init__(self, type_, value, line):
+        self.type = type_
+        self.value = value
+        self.line = line
+
+    def __repr__(self):
+        return f"<{self.type}, {self.value}> (L{self.line})"
+
+
+class LexerError(Exception):
+    pass
+
+
 class Scanner:
 
     def __init__(self, source):
-
         self.source = source
         self.position = 0
+        self.line = 1
         self.current_char = source[0] if source else None
 
-
     def advance(self):
+        if self.current_char == "\n":
+            self.line += 1
 
         self.position += 1
+
 
         if self.position >= len(self.source):
             self.current_char = None
         else:
             self.current_char = self.source[self.position]
 
-
     def peek(self):
-
         if self.position + 1 >= len(self.source):
             return None
-
         return self.source[self.position + 1]
 
-
     def skip_whitespace(self):
-
         while self.current_char is not None and self.current_char.isspace():
             self.advance()
 
+    def skip_comment(self):
+        # Comentário //
+        if self.current_char == "/" and self.peek() == "/":
+            while self.current_char is not None and self.current_char != "\n":
+                self.advance()
+
+        # Comentário #
+        elif self.current_char == "#":
+            while self.current_char is not None and self.current_char != "\n":
+                self.advance()
 
     def identifier(self):
-
         result = ""
 
         while (self.current_char is not None and
                (self.current_char.isalnum() or self.current_char == "_")):
-
             result += self.current_char
             self.advance()
 
         if result in KEYWORDS:
-            print(f"<KEYWORD, {result}>")
-        else:
-            print(f"<IDENTIFIER, {result}>")
-
+            return Token("KEYWORD", result, self.line)
+        return Token("IDENTIFIER", result, self.line)
 
     def number(self):
-
         result = ""
         is_real = False
 
@@ -64,187 +80,162 @@ class Scanner:
                 self.current_char.isdigit() or self.current_char == "."):
 
             if self.current_char == ".":
-
                 if is_real:
                     break
-
                 is_real = True
 
             result += self.current_char
             self.advance()
 
-        if is_real:
-            print(f"<REAL, {result}>")
-        else:
-            print(f"<INTEGER, {result}>")
+        if result.endswith("."):
+            raise LexerError(f"Número real inválido na linha {self.line}")
 
+        if is_real:
+            return Token("REAL", result, self.line)
+        return Token("INTEGER", result, self.line)
 
     def string(self):
-
         result = ""
-        self.advance()
+        self.advance()  
 
         while self.current_char is not None and self.current_char != '"':
             result += self.current_char
             self.advance()
 
-        self.advance()
+        if self.current_char is None:
+            raise LexerError(f"String não fechada (linha {self.line})")
 
-        print(f'<STRING, "{result}">')
+        self.advance()  # fecha "
 
-    def skip_comment(self):
-        
-        # comentário de linha //
-        if self.current_char == "/" and self.peek() == "/":
+        return Token("STRING", result, self.line)
 
-            self.advance()
-            self.advance()
-
-            while self.current_char is not None and self.current_char != "\n":
-                self.advance()
-
-        # comentário de bloco /* */
-        elif self.current_char == "/" and self.peek() == "*":
-
-            self.advance()
-            self.advance()
-
-            while self.current_char is not None:
-
-                if self.current_char == "*" and self.peek() == "/":
-                    self.advance()
-                    self.advance()
-                    break
-
-                self.advance()
-        # adicionar comentario de #
-        elif self.current_char == "#" :
-
-            self.advance()
-
-            while self.current_char is not None and self.current_char != "\n":
-                self.advance()
-
-    def scan(self):
+    def get_tokens(self):
+        tokens = []
 
         while self.current_char is not None:
 
             if self.current_char.isspace():
                 self.skip_whitespace()
-            
-            elif self.current_char == "/" and (self.peek() == "/" or self.peek() == "*") or self.current_char == "#" :
+
+            elif (self.current_char == "/" and self.peek() in ["/"]) \
+                    or self.current_char == "#":
                 self.skip_comment()
 
             elif self.current_char.isalpha() or self.current_char == "_":
-                self.identifier()
+                tokens.append(self.identifier())
 
             elif self.current_char.isdigit():
-                self.number()
+                tokens.append(self.number())
 
             elif self.current_char == '"':
-                self.string()
+                tokens.append(self.string())
 
+            # Operadores compostos
             elif self.current_char == "=" and self.peek() == "=":
-                print("<EQ, ==>")
+                tokens.append(Token("EQ", "==", self.line))
                 self.advance()
                 self.advance()
 
             elif self.current_char == "!" and self.peek() == "=":
-                print("<NEQ, !=>")
+                tokens.append(Token("NEQ", "!=", self.line))
                 self.advance()
                 self.advance()
 
             elif self.current_char == "<" and self.peek() == "=":
-                print("<LTE, <=>")
+                tokens.append(Token("LTE", "<=", self.line))
                 self.advance()
                 self.advance()
 
             elif self.current_char == ">" and self.peek() == "=":
-                print("<GTE, >=>")
+                tokens.append(Token("GTE", ">=", self.line))
                 self.advance()
                 self.advance()
 
+            # Operadores simples
             elif self.current_char == "=":
-                print("<ASSIGN, =>>")
-                self.advance()
-
-            elif self.current_char == ":":
-                print("<COLON, :>")
-                self.advance()
-
-            elif self.current_char == ";":
-                print("<SEMICOLON, ;>")
-                self.advance()
-
-            elif self.current_char == "(":
-                print("<LPAREN, (>")
-                self.advance()
-
-            elif self.current_char == ")":
-                print("<RPAREN, )>")
-                self.advance()
-
-            elif self.current_char == "{":
-                print("<LBRACE, {>")
-                self.advance()
-
-            elif self.current_char == "}":
-                print("<RBRACE, }>")
-                self.advance()
-
-            elif self.current_char == "+":
-                print("<PLUS, +>")
-                self.advance()
-
-            elif self.current_char == "-":
-                print("<MINUS, ->")
-                self.advance()
-
-            elif self.current_char == "*":
-                print("<MULT, *>")
-                self.advance()
-
-            elif self.current_char == "/" :
-                print("<DIV, />")
+                tokens.append(Token("ASSIGN", "=", self.line))
                 self.advance()
 
             elif self.current_char == "<":
-                print("<LT, <>")
+                tokens.append(Token("LT", "<", self.line  ))
                 self.advance()
 
             elif self.current_char == ">":
-                print("<GT, >>")
+                tokens.append(Token("GT", ">", self.line  ))
+                self.advance()
+
+            elif self.current_char == "+":
+                tokens.append(Token("PLUS", "+", self.line  ))
+                self.advance()
+
+            elif self.current_char == "-":
+                tokens.append(Token("MINUS", "-", self.line  ))
+                self.advance()
+
+            elif self.current_char == "*":
+                tokens.append(Token("MULT", "*", self.line  ))
+                self.advance()
+
+            elif self.current_char == "/":
+                tokens.append(Token("DIV", "/", self.line  ))
+                self.advance()
+
+            elif self.current_char == ":":
+                tokens.append(Token("COLON", ":", self.line  ))
+                self.advance()
+
+            elif self.current_char == ";":
+                tokens.append(Token("SEMICOLON", ";", self.line  ))
+                self.advance()
+
+            elif self.current_char == "(":
+                tokens.append(Token("LPAREN", "(", self.line  ))
+                self.advance()
+
+            elif self.current_char == ")":
+                tokens.append(Token("RPAREN", ")", self.line  ))
+                self.advance()
+
+            elif self.current_char == "{":
+                tokens.append(Token("LBRACE", "{", self.line  ))
+                self.advance()
+
+            elif self.current_char == "}":
+                tokens.append(Token("RBRACE", "}", self.line  ))
                 self.advance()
 
             elif self.current_char == ",":
-                print("<COMMA, ,>")
+                tokens.append(Token("COMMA", ",", self.line  ))
                 self.advance()
 
             else:
-                print(f"<UNKNOWN, {self.current_char}>")
-                self.advance()
+                raise LexerError(
+                    f"Caractere inválido '{self.current_char}' "
+                    f"(linha {self.line})"
+                )
+
+        tokens.append(Token("EOF", None, self.line  ))
+        return tokens
+    
 
 def main():
+        filename = "text.txt"
 
-    import sys
+        try:
+            with open(filename, "r", encoding="utf-8") as file:
+                source_code = file.read()
 
-    if len(sys.argv) < 2:
-        print("Uso: python scanner.py programa.txt")
-        return
+            scanner = Scanner(source_code)
+            tokens = scanner.get_tokens()
 
-    filename = "programa.txt"
+            for token in tokens:
+                print(token)
 
-    try:
-
-        with open(filename, "r", encoding="utf-8") as file:
-            source_code = file.read()
-
-        scanner = Scanner(source_code)
-        scanner.scan()
-
-    except FileNotFoundError:
-        print("Arquivo não encontrado.")
+        except FileNotFoundError:
+            print("Arquivo não encontrado.")
+        except LexerError as e:
+            print("Erro léxico:", e)
 
 
-main()
-
+if __name__ == "__main__":
+    main()

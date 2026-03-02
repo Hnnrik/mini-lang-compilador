@@ -1,5 +1,5 @@
 var a : int = 5;
-#isso é um comentario 
+/*isso é um comentario */
 var resultado : int = 1;
 
 def calcular(n : int) : int {
