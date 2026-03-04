@@ -10,9 +10,30 @@ class Parser:
         self.position = 0
         self.current_token = self.Token[self.position] if self.Token else None
 
-    def error(self):
+    def error(self, message):
         linha = self.current_token.line if self.current_token else "EOF"
-        raise ParserError(f"Erro de sintaxe na linha {linha}")
+        raise ParserError(f"Erro de sintaxe na linha {linha}: {message}")
+
+    def advance(self):
+        self.position += 1
+        if self.position < len(self.tokens):
+            self.current_token = self.tokens[self.position]
+        else:
+            self.current_token = None
+
+    def match(self, expected_type, expected_value=None):
+        if self.current_token is None:
+            self.error(f"Fim de arquivo. Esperado: {expected_type}")
+
+        if self.current_token.type == expected_type:
+            if expected_value is not None and self.current_token.value != expected_value:
+                self.error(f"queria esse '{expected_value}', mas ganhei esse '{self.current_token.value}'")
+            
+            consumed_token = self.current_token
+            self.advance()
+            return consumed_token
+        else:
+            self.error(f"queria esse tipo '{expected_type}', mas achei esse '{self.current_token.type}'")
     
     #<program> => <statement> <program> | e
     def parser_program(self):
