@@ -270,6 +270,11 @@ class parser:
                 self.match("COMMA")
                 self.parser_expression()
         self.match("RPAREN")
+class ASTNode:
+    def to_dict(self):
+        result = {"no": self.__class__.__name__}
+        return result
+
 
 if __name__ == "__main__":
     from scanner import Scanner, LexerError
