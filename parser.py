@@ -5,10 +5,10 @@ class parserError(Exception):
     pass
 
 class parser:
-    def __init__(self, Token):
-        self.Token = Token
+    def __init__(self, tokens):
+        self.tokens = tokens
         self.position = 0
-        self.current_token = self.Token[self.position] if self.Token else None
+        self.current_token = self.tokens[self.position] if self.tokens else None
 
     def error(self, message):
         linha = self.current_token.line if self.current_token else "EOF"
@@ -37,7 +37,7 @@ class parser:
     
     #<program> => <statement> <program> | e
     def parser_program(self):
-        while self.current_token is not None and self.current_token.type != "EOF":
+        while self.current_token is not None and self.current_token.type != "EOF": 
             self.parser_statement()
     
 #<block> => "{" <block_rec> "}"
@@ -45,7 +45,7 @@ class parser:
 
     def parser_block(self):
         self.match("LBRACE")
-        while self.current_token is None or self.current_token.type != "RBRACE":
+        while self.current_token is not None and self.current_token.type != "RBRACE":
             self.parser_statement()
         self.match("RBRACE")
             
@@ -72,7 +72,7 @@ class parser:
             elif self.current_token.value == "if":
                 self.parser_if_statement()
             elif self.current_token.value == "while":
-                self.parser.while_statement()
+                self.parser_while_statement()
             elif self.current_token.value == "return":
                 self.parser_return_statement()
                 self.match("SEMICOLON")
@@ -86,6 +86,22 @@ class parser:
             self.error(f"Token inesperado: '{self.current_token}'")
 #<function-decl> => "def" <identifier> "(" <formal_params_opt> ")" ":" <type> <block>
 #<formal_params_opt> => <formal-params> | e
+# <variable-decl> => "var" <identifier> ":" <type> "=" <expression>
+    def parser_variable_decl(self):
+        self.match("KEYWORD", "var")
+        self.match("IDENTIFIER")
+        self.match("COLON")
+        self.parser_type()
+        self.match("ASSIGN") 
+        self.parser_expression()
+
+    # <assignment> => "set" <identifier> "=" <expression>
+    def parser_assignment(self):
+        self.match("KEYWORD", "set")
+        self.match("IDENTIFIER")
+        self.match("ASSIGN")
+        self.parser_expression()
+
 
     def parser_function_decl(self):
         self.match("KEYWORD", "def")
@@ -121,8 +137,8 @@ class parser:
         self.match("KEYWORD", "while")
         self.match("LPAREN")
 
-        if self.current_token.type != "RPAREN":
-            self.parser_expression() 
+       
+        self.parser_expression() 
         self.match("RPAREN")
         self.parser_block()
 
@@ -133,15 +149,16 @@ class parser:
         self.match("KEYWORD", "if")
         self.match("LPAREN")
 
-        if self.current_token.type != "RPAREN":
-            self.parser_expression() 
+        
+        self.parser_expression() 
         self.match("RPAREN")
         self.parser_block()
         self.parser_opt_else()
 
     def parser_opt_else(self):
-        self.match("KEYWORD", "else")
-        self.parser_block()
+        if self.current_token is not None and self.current_token.value == "else":
+            self.match("KEYWORD", "else")
+            self.parser_block()
 
 
 
@@ -153,62 +170,138 @@ class parser:
 #<print-statement> => "print" <string-literal>
     def parser_print_statement(self):
         self.match("KEYWORD", "print")
-        self.parser_string_literal()
+        self.parser_expression()
 
 # <type> => "int" | "real" | "bool" | "void"
     def parser_type(self):
-
-# <variable-decl> => "var" <identifier> ":" <type> <expression>
-# <assignment> => "set" <identifier> "=" <expression>
-
-# <expression> => <simple-expression> <relational_list>
-#<relational_list> => <relational-op> <simple-expression> <relational_list> | e
-
-#<simple-expression> => <term> <additive_list>
-#<additive_list> => <additive-op> <term> <additive_list> | e
-
-#<term> => <factor> <multiplicative_list>
-#<multiplicative_list> => <multiplicative-op> <factor> <multiplicative_list> | e
-
-#<factor> => <literal> | <identifier> | <function-call> | <sub-expression> | <unary>
-
-#<unary> => <unary_op> <expression_list>
-#<unary_op> => "+" | "-" | "not"
-#<expression_list> => <expression> <expression_list> | e
-
-#<sub-expression> => "(" <expression> ")"
-
-#<function-call> => <identifier> "(" <opt_actual_params> ")"
-
-#<actual-params> => <expression> <actual-param_list>
-#<opt_actual_params> => <actual-params> | e
-
-#<actual-param_list> => "," <expression> <actual-param_list> | e
-
-#<relational-op> => "<" | ">" | "==" | "!=" | "<=" | ">="
-
-#     def parser_relational_op(self):
-#         self.match("PLUS") 
+        tipos_validos = ["int", "real", "bool", "void"]
         
-# #<additive-op> => "+" | "-" | "or"
-#<multiplicative-op> => "*" | "/" | "and"
+        if self.current_token is not None and \
+           self.current_token.type == "KEYWORD" and \
+           self.current_token.value in tipos_validos:
+            self.match("KEYWORD", self.current_token.value)
+            
+        else:
+            self.error("Esperado um tipo válido ('int', 'real', 'bool' ou 'void')")
 
-#<identifier> => <id_start> <id_rest_list>
-#<id_start> => "_" | <letter>
-#<id_rest_list> => <id_rest> <id_rest_list> | e
-#<id_rest> => "_" | <letter> | <digit>
 
-#<digit> => "0" | ... | "9"
-#<letter> => "a" | ... | "z" | "A" | ... | "Z"
+# <string-literal> => " " " <string_char_list> " " "
+# <string_char_list> => <string_char> <string_char_list> | e
+# <string_char> => <letter> | <digit> | <symbol>
+# <symbol> => <any-char-except-quote>
+# <digit> => "0" | ... | "9"
+# <letter> => "a" | ... | "z" | "A" | ... | "Z"
 
-#<literal> => <integer-literal> | <real-literal> | "true" | "false"
+    def parser_string_literal(self):
+        self.match("STRING")
 
-#<integer-literal> => <digit> <digit_list>
-#<digit_list> => <digit> <digit_list> | e
+    # <expression> => <simple-expression> { <relational-op> <simple-expression> }
+    def parser_expression(self):
+        self.parser_simple_expression()
+        
+        operadores_relacionais = ["<", ">", "==", "!=", "<=", ">="]
+        
+        while self.current_token is not None and self.current_token.value in operadores_relacionais:
+            self.match(self.current_token.type) 
+            self.parser_simple_expression()
 
-#<real-literal> => <integer-literal> "." <integer-literal>
+# <simple-expression> => <term> <additive_list>
+# <additive_list> => <additive-op> <term> <additive_list> | e
+# <additive-op> => "+" | "-" | "or"
 
-#<string-literal> => " " " <string_char_list> " " "
-#<string_char_list> => <string_char> <string_char_list> | e
-#<string_char> => <letter> | <digit> | <symbol>
-#<symbol> => <any-char-except-quote>
+# <term> => <factor> { <multiplicative-op> <factor> }
+
+    def parser_simple_expression(self):
+        self.parser_term()
+        while self.current_token is not None and (
+            self.current_token.type in ["PLUS", "MINUS"] or 
+            (self.current_token.type == "KEYWORD" and self.current_token.value == "or")
+        ):
+            self.match(self.current_token.type) 
+            self.parser_term()
+
+    def parser_term(self):
+        self.parser_factor()
+        while self.current_token is not None and (
+            self.current_token.type in ["MULT", "DIV"] or 
+            (self.current_token.type == "KEYWORD" and self.current_token.value == "and")
+        ):
+            self.match(self.current_token.type)
+            self.parser_factor()
+
+
+# <factor> => <literal> | <identifier> | <function-call> | <sub-expression> | <unary>
+    def parser_factor(self):
+        if self.current_token is None:
+            self.error("Fim de arquivo inesperado dentro de uma expressao")
+            
+        #<literal> 
+        if self.current_token.type in ["INTEGER", "REAL", "STRING"]:
+            self.match(self.current_token.type)
+        elif self.current_token.value in ["true", "false"]:
+            self.match("KEYWORD", self.current_token.value)
+            
+        # <identifier> or <function-call>
+        elif self.current_token.type == "IDENTIFIER":
+            self.match("IDENTIFIER")
+            if self.current_token is not None and self.current_token.type == "LPAREN":
+                self.parser_function_call_tail()
+                
+        # <sub-expression> => "(" <expression> ")"
+        elif self.current_token.type == "LPAREN":
+            self.match("LPAREN")
+            self.parser_expression()
+            self.match("RPAREN")
+            
+        # <unary> => ("+" | "-" | "not") <expression>
+        elif self.current_token.type in ["PLUS", "MINUS"] or \
+             (self.current_token.type == "KEYWORD" and self.current_token.value == "not"):
+            self.match(self.current_token.type)
+            self.parser_factor()
+            
+        else:
+            self.error(f"Fator invalido na expressao: '{self.current_token.value}'")
+
+    def parser_function_call_tail(self):
+        self.match("LPAREN")
+        if self.current_token.type != "RPAREN":
+            self.parser_expression()
+            while self.current_token is not None and self.current_token.type == "COMMA":
+                self.match("COMMA")
+                self.parser_expression()
+        self.match("RPAREN")
+
+if __name__ == "__main__":
+    from scanner import Scanner, LexerError
+
+    teste = """
+var a : int = 5;
+//isso é um comentario
+var resultado : int = 1;
+
+def calcular(n : int) : int {
+    if (n > 0) {
+        return n * calcular(n - 1);
+    }
+    return 1;
+}
+
+print "Calculando Fatorial de 5:";
+set resultado = calcular(x);
+print resultado;
+     """
+    try:
+        scanner = Scanner(teste)
+        tokens = scanner.get_tokens() 
+        
+        MYparser = parser(tokens) 
+        MYparser.parser_program()
+        
+        print("O Parser validou o código perfeitamente!")
+
+    except LexerError as e:
+        print(f"ERRO NO SCANNER: {e}")
+    except parserError as e:
+        print(f"ERRO NO PARSER: {e}")
+    except Exception as e:
+        print(f"ERRO DESCONHECIDO: {e}")
