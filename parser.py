@@ -1,4 +1,3 @@
-from ast import operator
 import sys
 from scanner import Scanner, Token
 
@@ -38,17 +37,25 @@ class parser:
     
     #<program> => <statement> <program> | e
     def parser_program(self):
+        statements = []
         while self.current_token is not None and self.current_token.type != "EOF": 
-            self.parser_statement()
+            stmt = self.parser_statement()
+            if stmt is not None:
+                statements.append(stmt)
+        return Program(statements)
     
 #<block> => "{" <block_rec> "}"
 #<block_rec> => <statement><block_rec> | e
 
     def parser_block(self):
         self.match("LBRACE")
+        statements = []
         while self.current_token is not None and self.current_token.type != "RBRACE":
-            self.parser_statement()
+            stmt = self.parser_statement()
+            if stmt is not None:
+                statements.append(stmt)
         self.match("RBRACE")
+        return Block(statements)
             
         #<statement> => <variable-decl> ";"
               #| <assignment> ";"
@@ -62,27 +69,31 @@ class parser:
     def parser_statement(self):
         if self.current_token.type == "KEYWORD":
             if self.current_token.value == "var":
-                self.parser_variable_decl()
+                node = self.parser_variable_decl()
                 self.match("SEMICOLON")
+                return node
             elif self.current_token.value == "set":
-                self.parser_assignment()
+                node = self.parser_assignment()
                 self.match("SEMICOLON")
+                return node
             elif self.current_token.value == "print":
-                self.parser_print_statement()
+                node = self.parser_print_statement()
                 self.match("SEMICOLON")
+                return node
             elif self.current_token.value == "if":
-                self.parser_if_statement()
+                return self.parser_if_statement()
             elif self.current_token.value == "while":
-                self.parser_while_statement()
+                return self.parser_while_statement()
             elif self.current_token.value == "return":
-                self.parser_return_statement()
+                node = self.parser_return_statement()
                 self.match("SEMICOLON")
+                return node
             elif self.current_token.value == "def":
-                self.parser_function_decl()
+                return self.parser_function_decl()
             else:
                 self.error(f"Comando não reconhecido: '{self.current_token.value}'")
         elif self.current_token.type == "LBRACE":
-            self.parser_block()
+            return self.parser_block()
         else:
             self.error(f"Token inesperado: '{self.current_token}'")
 #<function-decl> => "def" <identifier> "(" <formal_params_opt> ")" ":" <type> <block>
@@ -90,58 +101,61 @@ class parser:
 # <variable-decl> => "var" <identifier> ":" <type> "=" <expression>
     def parser_variable_decl(self):
         self.match("KEYWORD", "var")
-        self.match("IDENTIFIER")
+        ident = self.match("IDENTIFIER").value
         self.match("COLON")
-        self.parser_type()
-        self.match("ASSIGN") 
-        self.parser_expression()
+        var_type = self.parser_type()
+        self.match("ASSIGN")
+        expr = self.parser_expression()
+        return VarDecl(ident, var_type, expr)
 
     # <assignment> => "set" <identifier> "=" <expression>
     def parser_assignment(self):
         self.match("KEYWORD", "set")
-        self.match("IDENTIFIER")
+        ident = self.match("IDENTIFIER").value
         self.match("ASSIGN")
-        self.parser_expression()
+        expr = self.parser_expression()
+        return Assignment(ident, expr)
 
 
     def parser_function_decl(self):
         self.match("KEYWORD", "def")
-        self.match("IDENTIFIER")
+        name = self.match("IDENTIFIER").value
         self.match("LPAREN")
-
+        params = []
         if self.current_token.type != "RPAREN":
-            self.parser_formal_params()   
+            params = self.parser_formal_params()
         self.match("RPAREN")
         self.match("COLON")
-        self.parser_type()
-        self.parser_block()
+        ret_type = self.parser_type()
+        body = self.parser_block()
+        return FunctionDecl(name, params, ret_type, body)
 
 # <formal-params> => <formal-param> <formal-param_list>
 # <formal-param_list> => "," <formal-param> <formal-param_list> | e
 # <formal-param> => <identifier> ":" <type>
     def parser_formal_params(self):
-        self.parser_formal_param()
-        
+        params = []
+
+        params.append(self.parser_formal_param())
         while self.current_token is not None and self.current_token.type == "COMMA":
-            
-            self.match("COMMA")          
-            self.parser_formal_param()    
+            self.match("COMMA")
+            params.append(self.parser_formal_param())
+        return params 
 
     def parser_formal_param(self):
-        self.match("IDENTIFIER")
+        name = self.match("IDENTIFIER").value
         self.match("COLON")
-        self.parser_type()
-
+        typ = self.parser_type()
+        return (name, typ)
 # <while-statement> => "while" "(" <expression> ")" <block>
 
     def parser_while_statement(self):
         self.match("KEYWORD", "while")
         self.match("LPAREN")
-
-       
-        self.parser_expression() 
+        cond = self.parser_expression()
         self.match("RPAREN")
-        self.parser_block()
+        body = self.parser_block()
+        return WhileStmt(cond, body)
 
 # <if-statement> => "if" "(" <expression> ")" <block> <opt_else>
 # <opt_else> => "else" <block> | e
@@ -149,41 +163,75 @@ class parser:
     def parser_if_statement(self):
         self.match("KEYWORD", "if")
         self.match("LPAREN")
-
-        
-        self.parser_expression() 
+        cond = self.parser_expression()
         self.match("RPAREN")
-        self.parser_block()
-        self.parser_opt_else()
+        then_block = self.parser_block()
+        else_block = self.parser_opt_else()
+        return IfStmt(cond, then_block, else_block)
 
     def parser_opt_else(self):
         if self.current_token is not None and self.current_token.value == "else":
             self.match("KEYWORD", "else")
-            self.parser_block()
+            return self.parser_block()
+        return None
 
 
 
 # <return-statement> => "return" <expression>
     def parser_return_statement(self):
         self.match("KEYWORD", "return")
-        self.parser_expression()
+        expr = self.parser_expression()
+        return ReturnStmt(expr)
 
 #<print-statement> => "print" <string-literal>
     def parser_print_statement(self):
         self.match("KEYWORD", "print")
-        self.parser_expression()
+        expr = self.parser_expression()
+        return PrintStmt(expr)
+    
+
+
+
+
+
+
+
+
+
+
+#concerrtar o print
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # <type> => "int" | "real" | "bool" | "void"
     def parser_type(self):
         tipos_validos = ["int", "real", "bool", "void"]
-        
         if self.current_token is not None and \
-           self.current_token.type == "KEYWORD" and \
-           self.current_token.value in tipos_validos:
-            self.match("KEYWORD", self.current_token.value)
+        self.current_token.type == "KEYWORD" and \
+        self.current_token.value in tipos_validos:
             
-        else:
-            self.error("Esperado um tipo válido ('int', 'real', 'bool' ou 'void')")
+            return self.match("KEYWORD", self.current_token.value).value
+        self.error("Esperado um tipo válido ('int', 'real', 'bool' ou 'void')")
 
 
 # <string-literal> => " " " <string_char_list> " " "
@@ -198,13 +246,13 @@ class parser:
 
     # <expression> => <simple-expression> { <relational-op> <simple-expression> }
     def parser_expression(self):
-        self.parser_simple_expression()
-        
-        operadores_relacionais = ["<", ">", "==", "!=", "<=", ">="]
-        
-        while self.current_token is not None and self.current_token.value in operadores_relacionais:
-            self.match(self.current_token.type) 
-            self.parser_simple_expression()
+        left = self.parser_simple_expression()
+        while self.current_token is not None and self.current_token.value in ["<", ">", "==", "!=", "<=", ">="]:
+            op = self.current_token.value
+            self.match(self.current_token.type)   # consome o operador
+            right = self.parser_simple_expression()
+            left = BinaryOp(op, left, right)
+        return left
 
 # <simple-expression> => <term> <additive_list>
 # <additive_list> => <additive-op> <term> <additive_list> | e
@@ -213,22 +261,28 @@ class parser:
 # <term> => <factor> { <multiplicative-op> <factor> }
 
     def parser_simple_expression(self):
-        self.parser_term()
+        left = self.parser_term()
         while self.current_token is not None and (
             self.current_token.type in ["PLUS", "MINUS"] or 
             (self.current_token.type == "KEYWORD" and self.current_token.value == "or")
         ):
-            self.match(self.current_token.type) 
-            self.parser_term()
+            op = self.current_token.value
+            self.match(self.current_token.type)
+            right = self.parser_term()
+            left = BinaryOp(op, left, right)
+        return left
 
     def parser_term(self):
-        self.parser_factor()
+        left = self.parser_factor()
         while self.current_token is not None and (
             self.current_token.type in ["MULT", "DIV"] or 
             (self.current_token.type == "KEYWORD" and self.current_token.value == "and")
         ):
+            op = self.current_token.value
             self.match(self.current_token.type)
-            self.parser_factor()
+            right = self.parser_factor()
+            left = BinaryOp(op, left, right)
+        return left
 
 
 # <factor> => <literal> | <identifier> | <function-call> | <sub-expression> | <unary>
@@ -238,144 +292,395 @@ class parser:
             
         #<literal> 
         if self.current_token.type in ["INTEGER", "REAL", "STRING"]:
-            self.match(self.current_token.type)
+            token = self.match(self.current_token.type)
+            if token.type == "INTEGER":
+                return Literal(int(token.value), "int")
+            elif token.type == "REAL":
+                return Literal(float(token.value), "real")
+            elif token.type == "STRING":
+                return Literal(token.value, "string")
+            
         elif self.current_token.value in ["true", "false"]:
-            self.match("KEYWORD", self.current_token.value)
+            val = self.match("KEYWORD", self.current_token.value).value
+            return Literal(True if val == "true" else False, "bool")
             
         # <identifier> or <function-call>
         elif self.current_token.type == "IDENTIFIER":
-            self.match("IDENTIFIER")
+            ident = self.match("IDENTIFIER").value
             if self.current_token is not None and self.current_token.type == "LPAREN":
-                self.parser_function_call_tail()
+                # chamada de função
+                args = self.parser_function_call_tail()
+                return CallExpr(ident, args)
+            else:
+                return Identifier(ident)
                 
         # <sub-expression> => "(" <expression> ")"
         elif self.current_token.type == "LPAREN":
             self.match("LPAREN")
-            self.parser_expression()
+            expr = self.parser_expression()
             self.match("RPAREN")
+            return expr
             
         # <unary> => ("+" | "-" | "not") <expression>
         elif self.current_token.type in ["PLUS", "MINUS"] or \
-             (self.current_token.type == "KEYWORD" and self.current_token.value == "not"):
+            (self.current_token.type == "KEYWORD" and self.current_token.value == "not"):
+            op = self.current_token.value
             self.match(self.current_token.type)
-            self.parser_factor()
+            operand = self.parser_factor()
+            return UnaryOp(op, operand)
             
         else:
             self.error(f"Fator invalido na expressao: '{self.current_token.value}'")
 
     def parser_function_call_tail(self):
         self.match("LPAREN")
+        args = []
         if self.current_token.type != "RPAREN":
-            self.parser_expression()
+            args.append(self.parser_expression())
             while self.current_token is not None and self.current_token.type == "COMMA":
                 self.match("COMMA")
-                self.parser_expression()
+                args.append(self.parser_expression())
         self.match("RPAREN")
+        return args
 
 class ASTNode:
 
     def __init__(self):
         pass
 
-#--- parte de henrique
 
     def to_dict(self):
-        # isso é só pra debug né?
-        result = {"no´": self.__class__.__name__}
-        return result
+        # Para depuração – retorna um dicionário representando o nó
+        return {"tipo": self.__class__.__name__}
 
-class Programa(ASTNode):
+class Program(ASTNode):
+    def __init__(self,  statements):
+
+        super().__init__()
+
+        self.statements  =  statements   # lista de nós
+
+class PrintStmt(ASTNode):
+    def __init__(self, expr):
+
+        super().__init__()
+        self.expr =  expr   
+
+class Block(ASTNode):
     def __init__(self, statements):
         super().__init__()
-        self.statements= statements
+        self.statements = statements
 
-class bloco(ASTNode):
-    def __init__(self, statements):
-        super().__init__()
-        self.statements= statements
 
-class Variable_decl(ASTNode):
-    def __init__(self, nome, tipo, expression):
-        super().__init__()
-        self.nome = nome
-        self.type = tipo
-        self.expression = expression
+class VarDecl(ASTNode):
+    def __init__(self, name, var_type, expression):
+        super().__init__() 
 
-class Assignment(ASTNode):
-    def __init__(self, nome, expression):
-        super().__init__()
-        self.nome = nome
-        self.expression = expression
+        self.name = name
+        self.var_type =  var_type  
+        self.expression = expression 
 
-class Print_statement(ASTNode):
-    def __init__(self, expression):
+class Assignment(ASTNode): 
+    def __init__(self, name, expression):
         super().__init__()
-        self.expression = expression
 
-class If_statement(ASTNode):
-    def __init__(self, condicao, if_block, else_block=None): ## vou deixar o else_block opcional, depois vejam se tem alguma coisa disso no documento de laszlon
+        self.name = name
+        self.expression = expression 
+   
+
+class IfStmt(ASTNode):
+    def __init__(self, condition, then_block, else_block=None):
         super().__init__()
-        self.condition = condicao
-        self.if_block = if_block
+        self.condition = condition 
+        self.then_block = then_block
+
         self.else_block = else_block
 
-class While_statement(ASTNode):
-    def __init__(self, condicao, block):
+class FunctionDecl(ASTNode):
+    def __init__(self, name, params, return_type, body):
         super().__init__()
-        self.condition = condicao
-        self.block = block
 
-class Return_statement(ASTNode):
+        self.name = name
+        self.params = params   
+
+
+        self.return_type = return_type
+        self.body = body
+
+class WhileStmt(ASTNode):
+    def __init__(self, condition, body):
+
+        super().__init__()
+        self.condition = condition
+
+        self.body = body
+
+class ReturnStmt(ASTNode):
     def __init__(self, expression):
         super().__init__()
-        self.expression = expression
+        self.expression = expression 
 
-class Function_decl(ASTNode):
-    def __init__(self, nome, parametros,block, tipo_retorno=None):
-        super().__init__()
-        self.nome = nome
-        self.parametros = parametros
-        self.tipo_retorno = tipo_retorno
-        self.block = block
 
-class Expression(ASTNode):
-    def __init__(self, value, argumentos=None): #tem função void?
-        super().__init__()
-        self.value = value
-        self.argumentos = argumentos
 
-class Binary_Operation(ASTNode):
-    def __init__(self, esq, operador, dir):
+class BinaryOp(ASTNode):
+    def __init__(self, op, left, right):
         super().__init__()
-        self.operator = operador
-        self.left = esq
-        self.right = dir
+        self.op = op
+        self.left = left
+        self.right = right
 
-class Unary_Operation(ASTNode):
-    def __init__(self, operador, operando):
+class CallExpr(ASTNode):
+    def __init__(self, name, arguments):
         super().__init__()
-        self.operator = operador
-        self.operand = operando
+        self.name = name
+        self.arguments = arguments   
 
-class Literal(ASTNode):
-    def __init__(self, valor, tipo):
+class UnaryOp(ASTNode):
+    def __init__(self, op, operand):
         super().__init__()
-        self.value = valor
-        self.type = tipo
+        self.op = op 
+
+        self.operand = operand
 
 class Identifier(ASTNode):
     def __init__(self, name):
         super().__init__()
+
         self.name = name
 
+class Literal(ASTNode):
+    def __init__(self, value, lit_type):
+        super().__init__()
 
-# -------------
+        self.value = value
+        self.lit_type = lit_type 
+
+class Symbol:
+    def __init__(self, name, sym_type, kind):   # kind é pra ser ou um var ou func
+        self.name = name
+        self.type = sym_type
+        self.kind = kind
+
+        self.params = None 
+
+class SemanticAnalyzer:
+    def __init__(self):
+        self.scopes = []       
+        self.current_function = None  
+
+        self.errors = []
+
+    def push_scope(self):
+        self.scopes.append({})
+
+    def pop_scope(self):
+        self.scopes.pop()
+
+    def add_symbol(self, name, sym):
+        scope = self.scopes[-1]
+        if name in scope:
+            self.error(f"Símbolo '{name}' já declarado neste escopo")
+        else:
+            scope[name] = sym
+
+    def lookup(self, name):
+        for scope in reversed(self.scopes):
+            if name in scope:
+                return scope[name]
+        return None
+
+    def error(self, msg):
+        self.errors.append(msg)
+        print(f"Erro semântico: {msg}")
+
+    def visit_program(self, node):
+        self.push_scope()
+
+
+
+        for stmt in node.statements:
+            self.visit(stmt)
+        self.pop_scope()
+
+    def visit_block(self, node):
+        self.push_scope()
+        for stmt in node.statements:
+            self.visit(stmt)
+        self.pop_scope()
+
+    def visit_var_decl(self, node):
+    
+        sym = Symbol(node.name, node.var_type, 'var')
+        self.add_symbol(node.name, sym)
+    
+    
+        expr_type = self.visit_expression(node.expression)
+        if expr_type != node.var_type:
+            self.error(f"Tipo incompatível na inicialização de '{node.name}': esperado {node.var_type}, obtido {expr_type}")
+
+    def visit_assignment(self, node):
+        sym = self.lookup(node.name)
+        if sym is None:
+            self.error(f"Variável '{node.name}' não declarada")
+        else:
+            expr_type = self.visit_expression(node.expression)
+            if expr_type != sym.type:
+                self.error(f"Atribuição inválida para '{node.name}': esperado {sym.type}, obtido {expr_type}")
+
+    def visit_print_stmt(self, node):
+        expr_type = self.visit_expression(node.expr)
+        if expr_type not in ("int", "real", "bool", "string"):
+            self.error(f"print não pode exibir valor do tipo {expr_type}")
+
+    def visit_if_stmt(self, node):
+        cond_type = self.visit_expression(node.condition)
+        if cond_type != "bool":
+            self.error(f"Condição do if deve ser booleana, recebeu {cond_type}")
+        self.visit(node.then_block)
+        if node.else_block:
+            self.visit(node.else_block)
+
+    def visit_while_stmt(self, node):
+        cond_type = self.visit_expression(node.condition)
+        if cond_type != "bool":
+            self.error(f"Condição do while deve ser booleana, recebeu {cond_type}")
+        self.visit(node.body)
+
+    def visit_return_stmt(self, node):
+        expr_type = self.visit_expression(node.expression)
+        if self.current_function is None:
+            self.error("return fora de função")
+        else:
+            expected = self.current_function.type  
+            if expr_type != expected:
+                self.error(f"Tipo de retorno incompatível: esperado {expected}, obtido {expr_type}")
+
+    def visit_function_decl(self, node):
+
+
+        sym = Symbol(node.name, node.return_type, 'func')
+        sym.params = node.params
+        self.add_symbol(node.name, sym)
+        self.push_scope()
+        for param_name, param_type in node.params:
+            param_sym = Symbol(param_name, param_type, 'var')
+            self.add_symbol(param_name, param_sym)
+        old_func = self.current_function
+        self.current_function = sym
+
+
+        self.visit(node.body)
+
+        self.current_function = old_func
+        self.pop_scope()
+
+    def visit_expression(self, expr):
+        if isinstance(expr, BinaryOp):
+            left = self.visit_expression(expr.left)
+            right = self.visit_expression(expr.right)
+  
+            if expr.op in ["+", "-", "*", "/"]:
+                if left in ("int", "real") and right in ("int", "real"):
+
+                    if left == "real" or right == "real":
+                        return "real"
+                    return "int"
+                else:
+                    self.error(f"Operador aritmético '{expr.op}' requer operandos numéricos (int/real), recebeu {left} e {right}")
+                    return "error"
+            elif expr.op in ["or", "and"]:
+                if left == "bool" and right == "bool":
+                    return "bool"
+                else:
+                    self.error(f"Operador lógico '{expr.op}' requer operandos bool, recebeu {left} e {right}")
+                    return "error"
+            elif expr.op in ["<", ">", "<=", ">=", "==", "!="]:
+
+                if left in ("int", "real") and right in ("int", "real"):
+                    return "bool"
+                else:
+                    self.error(f"Operador relacional '{expr.op}' requer operandos numéricos, recebeu {left} e {right}")
+                    return "error"
+            else:
+                self.error(f"Operador desconhecido '{expr.op}'")
+                return "error"
+
+        elif isinstance(expr, UnaryOp):
+            operand = self.visit_expression(expr.operand)
+            if expr.op == "not":
+                if operand != "bool":
+                    self.error(f"Operador 'not' requer bool, recebeu {operand}")
+                return "bool"
+            elif expr.op in ("+", "-"):
+                if operand not in ("int", "real"):
+                    self.error(f"Operador unário '{expr.op}' requer numérico, recebeu {operand}")
+                return operand
+            else:
+                return "error"
+
+        elif isinstance(expr, Literal):
+            return expr.lit_type
+
+        elif isinstance(expr, Identifier):
+            sym = self.lookup(expr.name)
+            if sym is None:
+                self.error(f"Variável '{expr.name}' não declarada")
+                return "error"
+            return sym.type
+
+        elif isinstance(expr, CallExpr):
+            sym = self.lookup(expr.name)
+            if sym is None:
+                self.error(f"Função '{expr.name}' não declarada")
+                return "error"
+            if sym.kind != 'func':
+                self.error(f"'{expr.name}' não é uma função")
+                return "error"
+
+            expected_args = len(sym.params)
+            given_args = len(expr.arguments)
+            if expected_args != given_args:
+                self.error(f"Função '{expr.name}' espera {expected_args} argumentos, recebeu {given_args}")
+                return "error"
+
+            for (param_name, param_type), arg_expr in zip(sym.params, expr.arguments):
+                arg_type = self.visit_expression(arg_expr)
+                if arg_type != param_type:
+                    self.error(f"Argumento '{param_name}' da função '{expr.name}' espera {param_type}, recebeu {arg_type}")
+            return sym.type
+
+        else:
+            self.error(f"Tipo de nó de expressão desconhecido: {type(expr)}")
+            return "error"
+
+    def visit(self, node):
+        # dispatcher simples
+        if isinstance(node, Program):
+            self.visit_program(node)
+        elif isinstance(node, Block):
+            self.visit_block(node)
+        elif isinstance(node, VarDecl):
+            self.visit_var_decl(node)
+        elif isinstance(node, Assignment):
+            self.visit_assignment(node)
+        elif isinstance(node, PrintStmt):
+            self.visit_print_stmt(node)
+        elif isinstance(node, IfStmt):
+            self.visit_if_stmt(node)
+        elif isinstance(node, WhileStmt):
+            self.visit_while_stmt(node)
+        elif isinstance(node, ReturnStmt):
+            self.visit_return_stmt(node)
+        elif isinstance(node, FunctionDecl):
+            self.visit_function_decl(node)
+        else:
+            self.error(f"Nó AST desconhecido: {type(node)}")
+
 if __name__ == "__main__":
     from scanner import Scanner, LexerError
 
     teste = """
 var a : int = 5;
-//isso é um comentario
 var resultado : int = 1;
 
 def calcular(n : int) : int {
@@ -386,18 +691,26 @@ def calcular(n : int) : int {
 }
 
 print "Calculando Fatorial de 5:";
-set resultado = calcular(x);
+set resultado = calcular(5);
 print resultado;
      """
     try:
         scanner = Scanner(teste)
         tokens = scanner.get_tokens() 
         
-        MYparser = parser(tokens) 
-        MYparser.parser_program()
+        myparser = parser(tokens) 
+        ast = myparser.parser_program()
         
-        print("O Parser validou o código perfeitamente!")
+        # Análise semântica
+        sem = SemanticAnalyzer()
+        sem.visit(ast)
+        
+        if not sem.errors:
 
+            print("Análise semântica concluída sem erros.")
+            print("Árvore sintática (simplificada):")
+
+            
     except LexerError as e:
         print(f"ERRO NO SCANNER: {e}")
     except parserError as e:
