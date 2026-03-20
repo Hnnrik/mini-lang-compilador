@@ -29,7 +29,7 @@
 
 <type> => "int" | "real" | "bool" | "void"
 
-<variable-decl> => "var" <identifier> ":" <type> <expression>
+<variable-decl> => "var" <identifier> ":" <type> = <expression>
 <assignment> => "set" <identifier> "=" <expression>
 
 <expression> => <simple-expression> <relational_list>

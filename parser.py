@@ -1,3 +1,4 @@
+from ast import operator
 import sys
 from scanner import Scanner, Token
 
@@ -270,12 +271,105 @@ class parser:
                 self.match("COMMA")
                 self.parser_expression()
         self.match("RPAREN")
+
 class ASTNode:
+
+    def __init__(self):
+        pass
+
+#--- parte de henrique
+
     def to_dict(self):
-        result = {"no": self.__class__.__name__}
+        # isso é só pra debug né?
+        result = {"no´": self.__class__.__name__}
         return result
 
+class Programa(ASTNode):
+    def __init__(self, statements):
+        super().__init__()
+        self.statements= statements
 
+class bloco(ASTNode):
+    def __init__(self, statements):
+        super().__init__()
+        self.statements= statements
+
+class Variable_decl(ASTNode):
+    def __init__(self, nome, tipo, expression):
+        super().__init__()
+        self.nome = nome
+        self.type = tipo
+        self.expression = expression
+
+class Assignment(ASTNode):
+    def __init__(self, nome, expression):
+        super().__init__()
+        self.nome = nome
+        self.expression = expression
+
+class Print_statement(ASTNode):
+    def __init__(self, expression):
+        super().__init__()
+        self.expression = expression
+
+class If_statement(ASTNode):
+    def __init__(self, condicao, if_block, else_block=None): ## vou deixar o else_block opcional, depois vejam se tem alguma coisa disso no documento de laszlon
+        super().__init__()
+        self.condition = condicao
+        self.if_block = if_block
+        self.else_block = else_block
+
+class While_statement(ASTNode):
+    def __init__(self, condicao, block):
+        super().__init__()
+        self.condition = condicao
+        self.block = block
+
+class Return_statement(ASTNode):
+    def __init__(self, expression):
+        super().__init__()
+        self.expression = expression
+
+class Function_decl(ASTNode):
+    def __init__(self, nome, parametros,block, tipo_retorno=None):
+        super().__init__()
+        self.nome = nome
+        self.parametros = parametros
+        self.tipo_retorno = tipo_retorno
+        self.block = block
+
+class Expression(ASTNode):
+    def __init__(self, value, argumentos=None): #tem função void?
+        super().__init__()
+        self.value = value
+        self.argumentos = argumentos
+
+class Binary_Operation(ASTNode):
+    def __init__(self, esq, operador, dir):
+        super().__init__()
+        self.operator = operador
+        self.left = esq
+        self.right = dir
+
+class Unary_Operation(ASTNode):
+    def __init__(self, operador, operando):
+        super().__init__()
+        self.operator = operador
+        self.operand = operando
+
+class Literal(ASTNode):
+    def __init__(self, valor, tipo):
+        super().__init__()
+        self.value = valor
+        self.type = tipo
+
+class Identifier(ASTNode):
+    def __init__(self, name):
+        super().__init__()
+        self.name = name
+
+
+# -------------
 if __name__ == "__main__":
     from scanner import Scanner, LexerError
 
