@@ -9,7 +9,7 @@ class parser:
         self.tokens = tokens
         self.position = 0
         self.current_token = self.tokens[self.position] if self.tokens else None
-        self.last_token = None  # <-- ADICIONA ISSO
+        self.last_token = None  
 
     def error(self, message):
         if self.current_token:
@@ -23,7 +23,7 @@ class parser:
 
     def advance(self):
         if self.current_token:
-            self.last_token = self.current_token  # <-- ADICIONA ISSO
+            self.last_token = self.current_token 
 
         self.position += 1
         if self.position < len(self.tokens):
@@ -664,42 +664,3 @@ class SemanticAnalyzer:
         else:
             self.error(f"Nó AST desconhecido: {type(node)}")
 
-if __name__ == "__main__":
-    from scanner import Scanner, LexerError
-
-    teste = """var a : int = 5;
-vr resultado : int = 0;
-
-def calcular(n : int) : int {
-    if (n > 0) {
-        return n * calcular(n - 1);
-    }
-    return 1;
-}
-
-print "Calculando Fatorial de 5:"
-set resultado = calcular(5);
-print resultado;
-     """
-    try:
-        scanner = Scanner(teste)
-        tokens = scanner.get_tokens() 
-        
-        myparser = parser(tokens) 
-        ast = myparser.parser_program()
-        
-        # Análise semântica
-        sem = SemanticAnalyzer()
-        sem.visit(ast)
-        
-        if not sem.errors:
-
-            print("Análise semântica concluída sem erros.")
-            print("Árvore sintática (simplificada):")
-            
-    except LexerError as e:
-        print(f"{e}")
-    except parserError as e:
-        print(f"{e}")
-    except Exception as e:
-        print(f"ERRO DESCONHECIDO: {e}")

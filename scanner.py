@@ -229,24 +229,3 @@ class Scanner:
         except LexerError as e:
             print("Erro léxico:", e)
 
-def main():
-        filename = "text.txt"
-
-        try:
-            with open(filename, "r", encoding="utf-8") as file:
-                source_code = file.read()
-
-            scanner = Scanner(source_code)
-            tokens = scanner.get_tokens()
-
-            for token in tokens:
-                print(token)
-
-        except FileNotFoundError:
-            print("Arquivo não encontrado.")
-        except LexerError as e:
-            print("Erro léxico:", e)
-
-
-if __name__ == "__main__":
-    main()
