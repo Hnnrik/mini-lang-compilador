@@ -1,0 +1,6 @@
+var x_ : int = 4;
+
+var resultado : " oi "
+var x : int = 5;
+
+about:blank#blocked
