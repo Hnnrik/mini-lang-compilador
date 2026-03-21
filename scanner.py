@@ -217,6 +217,17 @@ class Scanner:
         tokens.append(Token("EOF", None, self.line  ))
         return tokens
     
+    def read(self, filename):
+        try:
+            with open(filename, "r", encoding="utf-8") as file:
+                source_code = file.read()
+
+            return source_code
+                
+        except FileNotFoundError:
+            print("Arquivo não encontrado.")
+        except LexerError as e:
+            print("Erro léxico:", e)
 
 def main():
         filename = "text.txt"

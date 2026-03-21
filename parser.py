@@ -9,12 +9,22 @@ class parser:
         self.tokens = tokens
         self.position = 0
         self.current_token = self.tokens[self.position] if self.tokens else None
+        self.last_token = None  # <-- ADICIONA ISSO
 
     def error(self, message):
-        linha = self.current_token.line if self.current_token else "EOF"
+        if self.current_token:
+            linha = self.current_token.line
+        elif self.last_token:
+            linha = self.last_token.line
+        else:
+            linha = "desconhecida"
+
         raise parserError(f"Erro de sintaxe na linha {linha}: {message}")
 
     def advance(self):
+        if self.current_token:
+            self.last_token = self.current_token  # <-- ADICIONA ISSO
+
         self.position += 1
         if self.position < len(self.tokens):
             self.current_token = self.tokens[self.position]
@@ -27,13 +37,13 @@ class parser:
 
         if self.current_token.type == expected_type:
             if expected_value is not None and self.current_token.value != expected_value:
-                self.error(f"queria esse '{expected_value}', mas ganhei esse '{self.current_token.value}'")
+                self.error(f"Esperando por '{expected_value}', mas achei esse '{self.current_token.value}'")
             
             consumed_token = self.current_token
             self.advance()
             return consumed_token
         else:
-            self.error(f"queria esse tipo '{expected_type}', mas achei esse '{self.current_token.type}'")
+            self.error(f"Esperando por '{expected_type}', mas achei esse '{self.current_token.type}'")
     
     #<program> => <statement> <program> | e
     def parser_program(self):
@@ -101,20 +111,26 @@ class parser:
 # <variable-decl> => "var" <identifier> ":" <type> "=" <expression>
     def parser_variable_decl(self):
         self.match("KEYWORD", "var")
-        ident = self.match("IDENTIFIER").value
+        token = self.match("IDENTIFIER")
+        ident = token.value
+        line = token.line
+
         self.match("COLON")
         var_type = self.parser_type()
         self.match("ASSIGN")
         expr = self.parser_expression()
-        return VarDecl(ident, var_type, expr)
+        return VarDecl(ident, var_type, expr, line=line)
 
     # <assignment> => "set" <identifier> "=" <expression>
     def parser_assignment(self):
         self.match("KEYWORD", "set")
-        ident = self.match("IDENTIFIER").value
+        token = self.match("IDENTIFIER")
+        ident = token.value
+        line = token.line
+
         self.match("ASSIGN")
         expr = self.parser_expression()
-        return Assignment(ident, expr)
+        return Assignment(ident, expr, line=line)
 
 
     def parser_function_decl(self):
@@ -185,43 +201,10 @@ class parser:
 
 #<print-statement> => "print" <string-literal>
     def parser_print_statement(self):
-        self.match("KEYWORD", "print")
+        token = self.match("KEYWORD", "print")
+        line = token.line
         expr = self.parser_expression()
-        return PrintStmt(expr)
-    
-
-
-
-
-
-
-
-
-
-
-#concerrtar o print
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        return PrintStmt(expr, line=line)
 
 # <type> => "int" | "real" | "bool" | "void"
     def parser_type(self):
@@ -248,10 +231,11 @@ class parser:
     def parser_expression(self):
         left = self.parser_simple_expression()
         while self.current_token is not None and self.current_token.value in ["<", ">", "==", "!=", "<=", ">="]:
-            op = self.current_token.value
-            self.match(self.current_token.type)   # consome o operador
+            token = self.current_token
+            op = token.value
+            self.match(self.current_token.type)  
             right = self.parser_simple_expression()
-            left = BinaryOp(op, left, right)
+            left = BinaryOp(op, left, right, line=token.line)
         return left
 
 # <simple-expression> => <term> <additive_list>
@@ -266,10 +250,12 @@ class parser:
             self.current_token.type in ["PLUS", "MINUS"] or 
             (self.current_token.type == "KEYWORD" and self.current_token.value == "or")
         ):
-            op = self.current_token.value
+
+            token = self.current_token
+            op = token.value
             self.match(self.current_token.type)
             right = self.parser_term()
-            left = BinaryOp(op, left, right)
+            left = BinaryOp(op, left, right, line=token.line)
         return left
 
     def parser_term(self):
@@ -278,10 +264,11 @@ class parser:
             self.current_token.type in ["MULT", "DIV"] or 
             (self.current_token.type == "KEYWORD" and self.current_token.value == "and")
         ):
-            op = self.current_token.value
+            token = self.current_token
+            op = token.value
             self.match(self.current_token.type)
             right = self.parser_factor()
-            left = BinaryOp(op, left, right)
+            left = BinaryOp(op, left, right, line=token.line)
         return left
 
 
@@ -293,26 +280,29 @@ class parser:
         #<literal> 
         if self.current_token.type in ["INTEGER", "REAL", "STRING"]:
             token = self.match(self.current_token.type)
+
             if token.type == "INTEGER":
-                return Literal(int(token.value), "int")
+                return Literal(int(token.value), "int", line=token.line)
             elif token.type == "REAL":
-                return Literal(float(token.value), "real")
+                return Literal(float(token.value), "real", line=token.line)
             elif token.type == "STRING":
-                return Literal(token.value, "string")
+                return Literal(token.value, "string", line=token.line)
             
         elif self.current_token.value in ["true", "false"]:
-            val = self.match("KEYWORD", self.current_token.value).value
-            return Literal(True if val == "true" else False, "bool")
+            token = self.match("KEYWORD", self.current_token.value)
+            return Literal(True if token.value == "true" else False, "bool", line=token.line)
             
         # <identifier> or <function-call>
         elif self.current_token.type == "IDENTIFIER":
-            ident = self.match("IDENTIFIER").value
+            token = self.match("IDENTIFIER")
+            ident = token.value
+            line = token.line
+
             if self.current_token is not None and self.current_token.type == "LPAREN":
-                # chamada de função
                 args = self.parser_function_call_tail()
-                return CallExpr(ident, args)
+                return CallExpr(ident, args, line=line)
             else:
-                return Identifier(ident)
+                return Identifier(ident, line=line)
                 
         # <sub-expression> => "(" <expression> ")"
         elif self.current_token.type == "LPAREN":
@@ -324,10 +314,12 @@ class parser:
         # <unary> => ("+" | "-" | "not") <expression>
         elif self.current_token.type in ["PLUS", "MINUS"] or \
             (self.current_token.type == "KEYWORD" and self.current_token.value == "not"):
-            op = self.current_token.value
+            
+            token = self.current_token
+            op = token.value
             self.match(self.current_token.type)
             operand = self.parser_factor()
-            return UnaryOp(op, operand)
+            return UnaryOp(op, operand, line=token.line)
             
         else:
             self.error(f"Fator invalido na expressao: '{self.current_token.value}'")
@@ -344,61 +336,56 @@ class parser:
         return args
 
 class ASTNode:
-
-    def __init__(self):
-        pass
-
+    def __init__(self, line=None):
+        self.line = line
 
     def to_dict(self):
-        # Para depuração – retorna um dicionário representando o nó
         return {"tipo": self.__class__.__name__}
 
 class Program(ASTNode):
-    def __init__(self,  statements):
+    def __init__(self,  statements, line=None):
 
-        super().__init__()
+        super().__init__(line)
 
         self.statements  =  statements   # lista de nós
 
 class PrintStmt(ASTNode):
-    def __init__(self, expr):
-
-        super().__init__()
+    def __init__(self, expr, line=None):
+        super().__init__(line)
         self.expr =  expr   
 
 class Block(ASTNode):
-    def __init__(self, statements):
-        super().__init__()
+    def __init__(self, statements, line=None):
+        super().__init__(line)
         self.statements = statements
 
 
 class VarDecl(ASTNode):
-    def __init__(self, name, var_type, expression):
-        super().__init__() 
-
+    def __init__(self, name, var_type, expression, line=None):
+        super().__init__(line)
         self.name = name
-        self.var_type =  var_type  
-        self.expression = expression 
+        self.var_type = var_type
+        self.expression = expression
 
 class Assignment(ASTNode): 
-    def __init__(self, name, expression):
-        super().__init__()
+    def __init__(self, name, expression, line=None):
+        super().__init__(line)
 
         self.name = name
         self.expression = expression 
    
 
 class IfStmt(ASTNode):
-    def __init__(self, condition, then_block, else_block=None):
-        super().__init__()
+    def __init__(self, condition, then_block, else_block=None, line=None):
+        super().__init__(line)
         self.condition = condition 
         self.then_block = then_block
 
         self.else_block = else_block
 
 class FunctionDecl(ASTNode):
-    def __init__(self, name, params, return_type, body):
-        super().__init__()
+    def __init__(self, name, params, return_type, body, line=None):
+        super().__init__(line)
 
         self.name = name
         self.params = params   
@@ -408,60 +395,58 @@ class FunctionDecl(ASTNode):
         self.body = body
 
 class WhileStmt(ASTNode):
-    def __init__(self, condition, body):
+    def __init__(self, condition, body, line=None):
+        super().__init__(line)
 
-        super().__init__()
         self.condition = condition
 
         self.body = body
 
 class ReturnStmt(ASTNode):
-    def __init__(self, expression):
-        super().__init__()
+    def __init__(self, expression, line=None):
+        super().__init__(line)
         self.expression = expression 
 
 
 
 class BinaryOp(ASTNode):
-    def __init__(self, op, left, right):
-        super().__init__()
+    def __init__(self, op, left, right,line=None):
+        super().__init__(line)
         self.op = op
         self.left = left
         self.right = right
 
 class CallExpr(ASTNode):
-    def __init__(self, name, arguments):
-        super().__init__()
+    def __init__(self, name, arguments, line=None):
+        super().__init__(line)
         self.name = name
         self.arguments = arguments   
 
 class UnaryOp(ASTNode):
-    def __init__(self, op, operand):
-        super().__init__()
+    def __init__(self, op, operand, line=None):
+        super().__init__(line)
         self.op = op 
 
         self.operand = operand
 
 class Identifier(ASTNode):
-    def __init__(self, name):
-        super().__init__()
-
+    def __init__(self, name, line=None):
+        super().__init__(line)
         self.name = name
 
 class Literal(ASTNode):
-    def __init__(self, value, lit_type):
-        super().__init__()
+    def __init__(self, value, lit_type, line=None):
+        super().__init__(line)
 
         self.value = value
         self.lit_type = lit_type 
 
 class Symbol:
-    def __init__(self, name, sym_type, kind):   # kind é pra ser ou um var ou func
+    def __init__(self, name, sym_type, kind, line=None): #kind é pra ser  'var' ou 'func'
         self.name = name
         self.type = sym_type
         self.kind = kind
-
-        self.params = None 
+        self.line = line
 
 class SemanticAnalyzer:
     def __init__(self):
@@ -479,7 +464,7 @@ class SemanticAnalyzer:
     def add_symbol(self, name, sym):
         scope = self.scopes[-1]
         if name in scope:
-            self.error(f"Símbolo '{name}' já declarado neste escopo")
+            self.error(f"Símbolo '{name}' já declarado neste escopo", sym.line)
         else:
             scope[name] = sym
 
@@ -489,9 +474,12 @@ class SemanticAnalyzer:
                 return scope[name]
         return None
 
-    def error(self, msg):
+    def error(self, msg, line=None):
         self.errors.append(msg)
-        print(f"Erro semântico: {msg}")
+        if line:
+            print(f"Erro semântico na linha {line}: {msg}")
+        else:
+            print(f"Erro semântico: {msg}")
 
     def visit_program(self, node):
         self.push_scope()
@@ -510,18 +498,18 @@ class SemanticAnalyzer:
 
     def visit_var_decl(self, node):
     
-        sym = Symbol(node.name, node.var_type, 'var')
+        sym = Symbol(node.name, node.var_type, 'var', line=node.line)
         self.add_symbol(node.name, sym)
     
     
         expr_type = self.visit_expression(node.expression)
         if expr_type != node.var_type:
-            self.error(f"Tipo incompatível na inicialização de '{node.name}': esperado {node.var_type}, obtido {expr_type}")
+            self.error(f"Tipo incompatível na inicialização de '{node.name}': esperado {node.var_type}, obtido {expr_type}",node.line)
 
     def visit_assignment(self, node):
         sym = self.lookup(node.name)
         if sym is None:
-            self.error(f"Variável '{node.name}' não declarada")
+            self.error(f"Variável '{node.name}' não declarada", node.line)
         else:
             expr_type = self.visit_expression(node.expression)
             if expr_type != sym.type:
@@ -530,7 +518,7 @@ class SemanticAnalyzer:
     def visit_print_stmt(self, node):
         expr_type = self.visit_expression(node.expr)
         if expr_type not in ("int", "real", "bool", "string"):
-            self.error(f"print não pode exibir valor do tipo {expr_type}")
+            self.error(f"print não pode exibir valor do tipo {expr_type}", node.line)
 
     def visit_if_stmt(self, node):
         cond_type = self.visit_expression(node.condition)
@@ -586,20 +574,20 @@ class SemanticAnalyzer:
                         return "real"
                     return "int"
                 else:
-                    self.error(f"Operador aritmético '{expr.op}' requer operandos numéricos (int/real), recebeu {left} e {right}")
+                    self.error(f"Operador aritmético '{expr.op}' requer operandos numéricos (int/real), recebeu {left} e {right}", expr.line)
                     return "error"
             elif expr.op in ["or", "and"]:
                 if left == "bool" and right == "bool":
                     return "bool"
                 else:
-                    self.error(f"Operador lógico '{expr.op}' requer operandos bool, recebeu {left} e {right}")
+                    self.error(f"Operador aritmético '{expr.op}' requer operandos numéricos (int/real), recebeu {left} e {right}", expr.line)
                     return "error"
             elif expr.op in ["<", ">", "<=", ">=", "==", "!="]:
 
                 if left in ("int", "real") and right in ("int", "real"):
                     return "bool"
                 else:
-                    self.error(f"Operador relacional '{expr.op}' requer operandos numéricos, recebeu {left} e {right}")
+                    self.error(f"Operador aritmético '{expr.op}' requer operandos numéricos (int/real), recebeu {left} e {right}", expr.line)
                     return "error"
             else:
                 self.error(f"Operador desconhecido '{expr.op}'")
@@ -609,11 +597,11 @@ class SemanticAnalyzer:
             operand = self.visit_expression(expr.operand)
             if expr.op == "not":
                 if operand != "bool":
-                    self.error(f"Operador 'not' requer bool, recebeu {operand}")
+                    self.error(f"Operador 'not' requer bool, recebeu {operand}", expr.line)
                 return "bool"
             elif expr.op in ("+", "-"):
                 if operand not in ("int", "real"):
-                    self.error(f"Operador unário '{expr.op}' requer numérico, recebeu {operand}")
+                    self.error(f"Operador unário '{expr.op}' requer numérico, recebeu {operand}", expr.line)
                 return operand
             else:
                 return "error"
@@ -624,33 +612,33 @@ class SemanticAnalyzer:
         elif isinstance(expr, Identifier):
             sym = self.lookup(expr.name)
             if sym is None:
-                self.error(f"Variável '{expr.name}' não declarada")
+                self.error(f"Variável '{expr.name}' não declarada", expr.line)
                 return "error"
             return sym.type
 
         elif isinstance(expr, CallExpr):
             sym = self.lookup(expr.name)
             if sym is None:
-                self.error(f"Função '{expr.name}' não declarada")
+                self.error(f"Função '{expr.name}' não declarada", expr.line)
                 return "error"
             if sym.kind != 'func':
-                self.error(f"'{expr.name}' não é uma função")
+                self.error(f"'{expr.name}' não é uma função", expr.line)
                 return "error"
 
             expected_args = len(sym.params)
             given_args = len(expr.arguments)
             if expected_args != given_args:
-                self.error(f"Função '{expr.name}' espera {expected_args} argumentos, recebeu {given_args}")
+                self.error(f"Função '{expr.name}' espera {expected_args} argumentos, recebeu {given_args}", expr.line)
                 return "error"
 
             for (param_name, param_type), arg_expr in zip(sym.params, expr.arguments):
                 arg_type = self.visit_expression(arg_expr)
                 if arg_type != param_type:
-                    self.error(f"Argumento '{param_name}' da função '{expr.name}' espera {param_type}, recebeu {arg_type}")
+                    self.error(f"Argumento '{param_name}' da função '{expr.name}' espera {param_type}, recebeu {arg_type}", expr.line)
             return sym.type
 
         else:
-            self.error(f"Tipo de nó de expressão desconhecido: {type(expr)}")
+            self.error(f"Tipo de nó de expressão desconhecido: {type(expr)}", expr.line)
             return "error"
 
     def visit(self, node):
@@ -679,9 +667,8 @@ class SemanticAnalyzer:
 if __name__ == "__main__":
     from scanner import Scanner, LexerError
 
-    teste = """
-var a : int = 5;
-var resultado : int = 1;
+    teste = """var a : int = 5;
+vr resultado : int = 0;
 
 def calcular(n : int) : int {
     if (n > 0) {
@@ -690,7 +677,7 @@ def calcular(n : int) : int {
     return 1;
 }
 
-print "Calculando Fatorial de 5:";
+print "Calculando Fatorial de 5:"
 set resultado = calcular(5);
 print resultado;
      """
@@ -709,11 +696,10 @@ print resultado;
 
             print("Análise semântica concluída sem erros.")
             print("Árvore sintática (simplificada):")
-
             
     except LexerError as e:
-        print(f"ERRO NO SCANNER: {e}")
+        print(f"{e}")
     except parserError as e:
-        print(f"ERRO NO PARSER: {e}")
+        print(f"{e}")
     except Exception as e:
         print(f"ERRO DESCONHECIDO: {e}")
