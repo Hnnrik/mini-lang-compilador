@@ -342,22 +342,34 @@ class ASTNode:
     def to_dict(self):
         return {"tipo": self.__class__.__name__}
 
+    def print_ast(self, indent=0):              
+        print(" " * indent + repr(self))
+
+    def __repr__(self):                         
+        return f"<{self.__class__.__name__}>"
+
+
 class Program(ASTNode):
-    def __init__(self,  statements, line=None):
-
+    def __init__(self, statements, line=None):
         super().__init__(line)
+        self.statements = statements
 
-        self.statements  =  statements   # lista de nós
+    def print_ast(self, indent=0):              
+        print(" " * indent + "| [program]")
+        for stmt in self.statements:
+            stmt.print_ast(indent + 2)
 
-class PrintStmt(ASTNode):
-    def __init__(self, expr, line=None):
-        super().__init__(line)
-        self.expr =  expr   
 
 class Block(ASTNode):
     def __init__(self, statements, line=None):
         super().__init__(line)
         self.statements = statements
+
+    def print_ast(self, indent=0):              
+        print(" " * indent + "| [block] {")
+        for stmt in self.statements:
+            stmt.print_ast(indent + 2)
+        print(" " * indent + "| }")
 
 
 class VarDecl(ASTNode):
@@ -367,79 +379,154 @@ class VarDecl(ASTNode):
         self.var_type = var_type
         self.expression = expression
 
-class Assignment(ASTNode): 
+    def print_ast(self, indent=0):              
+        print(" " * indent + f"| [variable decl] : ")
+        print(" " * indent + "  | [name] " + self.name)
+        print(" " * indent + "  | [type] " + self.var_type)
+        self.expression.print_ast(indent + 2)
+
+
+class Assignment(ASTNode):
     def __init__(self, name, expression, line=None):
         super().__init__(line)
-
         self.name = name
-        self.expression = expression 
-   
+        self.expression = expression
+
+    def print_ast(self, indent=0):            
+        print(" " * indent + f"| [assignment] =")
+        print(" " * indent + "  | [name] " + self.name)
+        self.expression.print_ast(indent + 2)
+
+
+class PrintStmt(ASTNode):
+    def __init__(self, expr, line=None):
+        super().__init__(line)
+        self.expr = expr
+
+    def print_ast(self, indent=0):              
+        print(" " * indent + "| print")
+        self.expr.print_ast(indent + 2)
+
 
 class IfStmt(ASTNode):
     def __init__(self, condition, then_block, else_block=None, line=None):
         super().__init__(line)
-        self.condition = condition 
+        self.condition = condition
         self.then_block = then_block
-
         self.else_block = else_block
 
-class FunctionDecl(ASTNode):
-    def __init__(self, name, params, return_type, body, line=None):
-        super().__init__(line)
+    def print_ast(self, indent=0):            
+        print(" " * indent + "| if (")
+        self.condition.print_ast(indent + 2)
+        print(" " * indent + "| ) {")
+        self.then_block.print_ast(indent + 2)
+        print(" " * indent + "| }")
+        if self.else_block:
+            print(" " * (indent) + "| else {")
+            self.else_block.print_ast(indent + 2)
+            print(" " * (indent) + "| }")
 
-        self.name = name
-        self.params = params   
-
-
-        self.return_type = return_type
-        self.body = body
 
 class WhileStmt(ASTNode):
     def __init__(self, condition, body, line=None):
         super().__init__(line)
-
         self.condition = condition
-
         self.body = body
+
+    def print_ast(self, indent=0):              
+        print(" " * indent + "| while")
+        print(" " * (indent + 2) + "| [condition]")
+        self.condition.print_ast(indent + 4)
+        print(" " * (indent + 2) + "| [code]")
+        self.body.print_ast(indent + 4)
+
 
 class ReturnStmt(ASTNode):
     def __init__(self, expression, line=None):
         super().__init__(line)
-        self.expression = expression 
+        self.expression = expression
 
+    def print_ast(self, indent=0):              
+        print(" " * indent + "| return")
+        self.expression.print_ast(indent + 2)
+
+
+class FunctionDecl(ASTNode):
+    def __init__(self, name, params, return_type, body, line=None):
+        super().__init__(line)
+        self.name = name
+        self.params = params
+        self.return_type = return_type
+        self.body = body
+
+    def print_ast(self, indent=0):              
+        params_str = ", ".join(f"{n}: {t}" for n, t in self.params)
+        print(" " * indent + f"| [function decl]: {self.name}({params_str}) -> {self.return_type}")
+        self.body.print_ast(indent + 2)
 
 
 class BinaryOp(ASTNode):
-    def __init__(self, op, left, right,line=None):
+    def __init__(self, op, left, right, line=None):
         super().__init__(line)
         self.op = op
         self.left = left
         self.right = right
 
-class CallExpr(ASTNode):
-    def __init__(self, name, arguments, line=None):
-        super().__init__(line)
-        self.name = name
-        self.arguments = arguments   
+    def print_ast(self, indent=0):             
+        print(" " * indent + f"| [binary op] {self.op}")
+        self.left.print_ast(indent + 2)
+        self.right.print_ast(indent + 2)
+
 
 class UnaryOp(ASTNode):
     def __init__(self, op, operand, line=None):
         super().__init__(line)
-        self.op = op 
-
+        self.op = op
         self.operand = operand
+
+    def print_ast(self, indent=0):             
+        print(" " * indent + f"| [unary op] {self.op}")
+        self.operand.print_ast(indent + 2)
+
+
+class CallExpr(ASTNode):
+    def __init__(self, name, arguments, line=None):
+        super().__init__(line)
+        self.name = name
+        self.arguments = arguments
+
+    def print_ast(self, indent=0):             
+        print(" " * indent + f"CallExpr: {self.name}()")
+        for i, arg in enumerate(self.arguments):
+            print(" " * (indent + 2) + f"arg[{i}]:")
+            arg.print_ast(indent + 4)
+
 
 class Identifier(ASTNode):
     def __init__(self, name, line=None):
         super().__init__(line)
         self.name = name
 
+    def print_ast(self, indent=0):             
+        print(" " * indent + f"| [identifier] {self.name}")
+
+
 class Literal(ASTNode):
     def __init__(self, value, lit_type, line=None):
         super().__init__(line)
-
         self.value = value
-        self.lit_type = lit_type 
+        self.lit_type = lit_type
+
+    def print_ast(self, indent=0):            
+        print(" " * indent + f"| [literal] {self.value!r}")
+
+def print_ast(tree):
+    """Imprime a AST inteira com indentação."""
+    print("\n=== Árvore Sintática Abstrata ===")
+    tree.print_ast()
+    print("=================================\n")
+
+
 
 class Symbol:
     def __init__(self, name, sym_type, kind, line=None): #kind é pra ser  'var' ou 'func'

@@ -1,6 +1,6 @@
 import sys
 from scanner import Scanner, LexerError
-from parser import parser, parserError, SemanticAnalyzer
+from parser import parser, parserError, SemanticAnalyzer, print_ast
 from codegen import CodeGenerator
 
 
@@ -12,6 +12,7 @@ def compile_source(source_code):
     # 2. Parser
     myparser = parser(tokens)
     ast = myparser.parser_program()
+    print_ast(ast)
 
     # 3. Análise semântica
     sem = SemanticAnalyzer()

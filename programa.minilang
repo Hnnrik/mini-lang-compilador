@@ -1,11 +1,7 @@
 var x : int = 9;
 var resultado : int = 1;
-def calcular(n : int) : int {
-    if (n > 0) {
-        return n * calcular(n - 1);
-    }
-    return 1;
+if (x > 0) {
+    set resultado = 8;
 }
-print "Calculando Fatorial de 5:";
-set resultado = calcular(x);
+print x;
 print resultado;
