@@ -1,7 +1,14 @@
 var x : int = 9;
+var y : real = 10.5;
 var resultado : int = 1;
 if (x > 0) {
     set resultado = 8;
+} else {
+    set resultado = 10;
+}
+
+while (resultado > 5) {
+    set resultado = resultado - 1;
 }
 print x;
 print resultado;
