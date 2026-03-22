@@ -356,11 +356,12 @@ class Program(ASTNode):
 
     def print_ast(self, indent=0):              
         for stmt in self.statements:
-            print(" " * indent + "| [program]")
-            print(" " * indent + "  | [statement]")
+            print(" " * indent + "| <program>")
+            print(" " * indent + "  | <statement>")
             stmt.print_ast(indent + 4)
             if isinstance(stmt, (VarDecl, Assignment, PrintStmt, ResourceWarning)):
                 print(" " * indent + "  | ;")
+        print(" " * indent + "| <program>")
 
 
 class Block(ASTNode):
@@ -369,12 +370,13 @@ class Block(ASTNode):
         self.statements = statements
 
     def print_ast(self, indent=0):              
-        print(" " * indent + "| [block] {")
+        print(" " * indent + "| <block> {")
         for stmt in self.statements:
-            print(" " * indent + f"  | [block_rec]")
-            print(" " * indent + f"    | [statement]")
+            print(" " * indent + f"  | <block_rec>")
+            print(" " * indent + f"    | <statement>")
             stmt.print_ast(indent + 6)
-            print(" " * indent + f"    |;")
+            print(" " * indent + f"    | ;")
+        print(" " * indent + f"    | <block_rec>")
         print(" " * indent + "| }")
 
 
@@ -386,13 +388,13 @@ class VarDecl(ASTNode):
         self.expression = expression
 
     def print_ast(self, indent=0):              
-        print(" " * indent + f"| [variable-decl]")
+        print(" " * indent + f"| <variable-decl>")
         print(" " * indent + f"  | var")
-        print(" " * indent + "    | [name] " + self.name)
+        print(" " * indent + "    | <name] " + self.name)
         print(" " * indent + f"  | :")
-        print(" " * indent + "    | [type] " + self.var_type)
+        print(" " * indent + "    | <type] " + self.var_type)
         print(" " * indent + f"  | =")
-        print(" " * indent + "    | [expression]")
+        print(" " * indent + "    | <expression>")
         self.expression.print_ast(indent + 6)
 
 
@@ -403,11 +405,12 @@ class Assignment(ASTNode):
         self.expression = expression
 
     def print_ast(self, indent=0):            
-        print(" " * indent + f"| [assignment] set")
-        print(" " * indent + "  | [name] " + self.name)
-        print(" " * indent + f"| =")
-        print(" " * indent + f"  | [expression]")
-        self.expression.print_ast(indent + 4)
+        print(" " * indent + f"| <assignment>")
+        print(" " * indent + f"  |  set")
+        print(" " * indent + "    | <identifier> " + self.name)
+        print(" " * indent + f"  | =")
+        print(" " * indent + f"    | <expression>")
+        self.expression.print_ast(indent + 6)
 
 
 class PrintStmt(ASTNode):
@@ -416,8 +419,9 @@ class PrintStmt(ASTNode):
         self.expr = expr
 
     def print_ast(self, indent=0):              
-        print(" " * indent + "| print")
-        self.expr.print_ast(indent + 2)
+        print(" " * indent + "| <print-statement>")
+        print(" " * indent + "  | print")
+        self.expr.print_ast(indent + 4)
 
 
 class IfStmt(ASTNode):
@@ -428,13 +432,13 @@ class IfStmt(ASTNode):
         self.else_block = else_block
 
     def print_ast(self, indent=0):            
-        print(" " * indent + "| [if-statement] if (")
-        print(" " * indent + "  | [expression]")
+        print(" " * indent + "| <if-statement> if (")
+        print(" " * indent + "  | <expression>")
         self.condition.print_ast(indent + 4)
         print(" " * indent + "| )")
         self.then_block.print_ast(indent + 2)
         if self.else_block:
-            print(" " * (indent) + "| [opt_else] else")
+            print(" " * (indent) + "| <opt_else> else")
             self.else_block.print_ast(indent + 2)
 
 
@@ -445,8 +449,8 @@ class WhileStmt(ASTNode):
         self.body = body
 
     def print_ast(self, indent=0):              
-        print(" " * indent + "| [while-statement] while (")
-        print(" " * (indent + 2) + "| [expression]")
+        print(" " * indent + "| <while-statement> while (")
+        print(" " * (indent + 2) + "| <expression>")
         self.condition.print_ast(indent + 4)
         print(" " * indent + "| )")
         self.body.print_ast(indent + 4)
@@ -458,8 +462,8 @@ class ReturnStmt(ASTNode):
         self.expression = expression
 
     def print_ast(self, indent=0):              
-        print(" " * indent + "| [return-statement] return")
-        print(" " * indent + "  | [expression]")
+        print(" " * indent + "| <return-statement> return")
+        print(" " * indent + "  | <expression>")
         self.expression.print_ast(indent + 4)
 
 
@@ -472,11 +476,33 @@ class FunctionDecl(ASTNode):
         self.body = body
 
     def print_ast(self, indent=0):
-        print(" " * indent + "| [return-statement] def")
-        print(" " * indent + "  | [identifier]")              
-        params_str = ", ".join(f"{n}: {t}" for n, t in self.params)
-        print(" " * indent + f"|: {self.name}({params_str}) -> {self.return_type}")
-        self.body.print_ast(indent + 2)
+        print(" " * indent + "| <function-decl>")
+        print(" " * indent + "  | def")
+        print(" " * indent + f"   | <identifier> {self.name}")
+        print(" " * indent + "  | (") 
+        print(" " * indent + f"    | <formal_params_opt>")
+        if len(self.params) > 0:
+                 print(" " * indent + f"      | <formal-params>")
+                 print(" " * indent + f"        | <formal-param>")
+                 print(" " * indent + f"          | <identifier> {self.params[0][0]}")
+                 print(" " * indent + "          | :")
+                 print(" " * indent + f"          | <type> {self.params[0][1]}")
+                 print(" " * indent + f"        | <formal-param_list>")
+                 if len(self.params) > 1:
+                     for i in range(1, len(self.params)):
+                        print(" " * indent + " " * (i*2) + f"        | ,")
+                        print(" " * indent + " " * (i*2) + f"        | <formal-param>")
+                        print(" " * indent + " " * (i*2) + f"          |<identifier>{self.params[i][0]}")
+                        print(" " * indent + " " * (i*2) + "          | :")
+                        print(" " * indent + " " * (i*2) + f"          | <type>{self.params[i][1]}")
+                        print(" " * indent + " " * (i*2) + "        | <formal-param_list>")
+
+
+        print(" " * indent + "  | )")
+        print(" " * indent + "  | :")
+        print(" " * indent + f"    | <type> {self.return_type}")
+
+        self.body.print_ast(indent + 4)
 
 
 class BinaryOp(ASTNode):
@@ -487,8 +513,8 @@ class BinaryOp(ASTNode):
         self.right = right
 
     def print_ast(self, indent=0):             
-        print(" " * indent + f"| [binary op] {self.op}")
         self.left.print_ast(indent + 2)
+        print(" " * indent + f"| <binary op> {self.op}")
         self.right.print_ast(indent + 2)
 
 
@@ -499,7 +525,7 @@ class UnaryOp(ASTNode):
         self.operand = operand
 
     def print_ast(self, indent=0):              
-        print(" " * indent + f"| [unary op] {self.op}")
+        print(" " * indent + f"| <unary op> {self.op}")
         self.operand.print_ast(indent + 2)
 
 
@@ -509,11 +535,21 @@ class CallExpr(ASTNode):
         self.name = name
         self.arguments = arguments
 
-    def print_ast(self, indent=0):             
-        print(" " * indent + f"CallExpr: {self.name}()")
-        for i, arg in enumerate(self.arguments):
-            print(" " * (indent + 2) + f"arg[{i}]:")
-            arg.print_ast(indent + 4)
+    def print_ast(self, indent=0):
+        print(" " * indent + f"| <function-call>")
+        print(" " * indent + f"  | <identifier> {self.name}")
+        print(" " * indent + f"  | (")
+        print(" " * indent + f"  | <opt_actual_params>")
+        if len(self.arguments) > 0:
+            print(" " * indent + f"    | <actual-params>")
+            for i, arg in enumerate(self.arguments):
+                print(" " * indent + f"      | <expression>")
+                arg.print_ast(indent + 8)          # cada argumento dentro do loop
+                if i < len(self.arguments) - 1:    # vírgula só entre argumentos
+                    print(" " * indent + f"      | ,")
+                    print(" " * indent + f"      | <actual-param_list>")
+        print(" " * indent + f"    | <actual-param_list>")  # lista vazia no final
+        print(" " * indent + f"  | )")
 
 
 class Identifier(ASTNode):
@@ -522,7 +558,7 @@ class Identifier(ASTNode):
         self.name = name
 
     def print_ast(self, indent=0):              
-        print(" " * indent + f"| [identifier] {self.name}")
+        print(" " * indent + f"| <identifier> {self.name}")
 
 
 class Literal(ASTNode):
@@ -532,7 +568,14 @@ class Literal(ASTNode):
         self.lit_type = lit_type
 
     def print_ast(self, indent=0):            
-        print(" " * indent + f"| [literal] {self.value!r}")
+        print(" " * indent + f"| <literal> ")
+        if type(self.value) == int:
+            print(" " * indent + f"  | <integer-literal> {self.value}")
+        elif type(self.value) == float:
+            print(" " * indent + f"  | <real-literal> {self.value}")
+        else:
+            print(" " * indent + f"  | {self.value}")
+
 
 def print_ast(tree):
     print("\n=== AST ===")
