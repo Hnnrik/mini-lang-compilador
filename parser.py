@@ -609,10 +609,15 @@ class Literal(ASTNode):
             print(" " * indent + f"  | <string-literal> {self.value!r}")
  
  
-def print_ast(tree):
-    print("\n=== AST ===")
-    tree.print_ast()
-    print("===\n")
+def print_ast(tree, filename="ast.txt"):
+    import sys
+    original = sys.stdout
+    with open(filename, "w", encoding="utf-8") as f:
+        sys.stdout = f
+        print("\n=== AST ===")
+        tree.print_ast()
+        print("===\n")
+    sys.stdout = original
 
 
 

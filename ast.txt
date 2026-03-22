@@ -1,0 +1,282 @@
+
+=== AST ===
+| <program>
+  | <statement>
+    | <variable-decl>
+      | var
+        | <name> x
+      | :
+        | <type> int
+      | =
+        | <expression>
+          | <literal>
+            | <integer-literal> 9
+  | ;
+| <program>
+  | <statement>
+    | <variable-decl>
+      | var
+        | <name> y
+      | :
+        | <type> real
+      | =
+        | <expression>
+          | <literal>
+            | <real-literal> 10.5
+  | ;
+| <program>
+  | <statement>
+    | <variable-decl>
+      | var
+        | <name> z
+      | :
+        | <type> bool
+      | =
+        | <expression>
+          | <literal>
+            | false
+  | ;
+| <program>
+  | <statement>
+    | <variable-decl>
+      | var
+        | <name> resultado
+      | :
+        | <type> int
+      | =
+        | <expression>
+          | <literal>
+            | <integer-literal> 1
+  | ;
+| <program>
+  | <statement>
+    | <if-statement> if (
+      | <expression>
+        | <expression>
+          | <simple-expression>
+            | <identifier> x
+          | <relational-op> >
+          | <simple-expression>
+            | <literal>
+              | <integer-literal> 0
+    | )
+      | <block>
+        | {
+        | <block_rec>
+          | <statement>
+            | <assignment>
+              |  set
+                | <identifier> resultado
+              | =
+                | <expression>
+                  | <literal>
+                    | <integer-literal> 8
+          | ;
+        | <block_rec>
+        | }
+    | <opt_else> else
+      | <block>
+        | {
+        | <block_rec>
+          | <statement>
+            | <assignment>
+              |  set
+                | <identifier> resultado
+              | =
+                | <expression>
+                  | <literal>
+                    | <integer-literal> 10
+          | ;
+        | <block_rec>
+        | }
+| <program>
+  | <statement>
+    | <function-decl>
+      | def
+       | <identifier> calcular
+      | (
+        | <formal_params_opt>
+          | <formal-params>
+            | <formal-param>
+              | <identifier> n
+              | :
+              | <type> int
+            | <formal-param_list>
+              | ,
+              | <formal-param>
+                |<identifier>o
+                | :
+                | <type>real
+              | <formal-param_list>
+      | )
+      | :
+        | <type> real
+        | <block>
+          | {
+          | <block_rec>
+            | <statement>
+              | <if-statement> if (
+                | <expression>
+                  | <expression>
+                    | <simple-expression>
+                      | <identifier> n
+                    | <relational-op> >
+                    | <simple-expression>
+                      | <literal>
+                        | <integer-literal> 0
+              | )
+                | <block>
+                  | {
+                  | <block_rec>
+                    | <statement>
+                      | <return-statement> return
+                        | <expression>
+                          | <term>
+                            | <factor>
+                              | <identifier> n
+                            | <multiplicative-op> *
+                            | <multiplicative_list>
+                            | <factor>
+                              | <identifier> o
+                    | ;
+                  | <block_rec>
+                  | }
+          | <block_rec>
+            | <statement>
+              | <return-statement> return
+                | <expression>
+                  | <literal>
+                    | <real-literal> 1.5
+            | ;
+          | <block_rec>
+          | }
+| <program>
+  | <statement>
+    | <function-decl>
+      | def
+       | <identifier> funcaoteste
+      | (
+        | <formal_params_opt>
+          | <formal-params>
+            | <formal-param>
+              | <identifier> a
+              | :
+              | <type> int
+            | <formal-param_list>
+              | ,
+              | <formal-param>
+                |<identifier>b
+                | :
+                | <type>int
+              | <formal-param_list>
+                | ,
+                | <formal-param>
+                  |<identifier>c
+                  | :
+                  | <type>int
+                | <formal-param_list>
+      | )
+      | :
+        | <type> int
+        | <block>
+          | {
+          | <block_rec>
+            | <statement>
+              | <return-statement> return
+                | <expression>
+                  | <simple-expression>
+                    | <term>
+                      | <simple-expression>
+                        | <term>
+                          | <identifier> a
+                        | <additive-op> +
+                        | <additive_list>
+                        | <term>
+                          | <identifier> b
+                    | <additive-op> +
+                    | <additive_list>
+                    | <term>
+                      | <identifier> c
+            | ;
+          | <block_rec>
+          | }
+| <program>
+  | <statement>
+    | <print-statement>
+      | print
+        | <identifier> x
+  | ;
+| <program>
+  | <statement>
+    | <while-statement> while (
+      | <expression>
+        | <expression>
+          | <simple-expression>
+            | <identifier> resultado
+          | <relational-op> >
+          | <simple-expression>
+            | <literal>
+              | <integer-literal> 5
+    | )
+        | <block>
+          | {
+          | <block_rec>
+            | <statement>
+              | <assignment>
+                |  set
+                  | <identifier> resultado
+                | =
+                  | <expression>
+                    | <simple-expression>
+                      | <term>
+                        | <identifier> resultado
+                      | <additive-op> -
+                      | <additive_list>
+                      | <term>
+                        | <literal>
+                          | <integer-literal> 1
+            | ;
+          | <block_rec>
+          | }
+| <program>
+  | <statement>
+    | <assignment>
+      |  set
+        | <identifier> y
+      | =
+        | <expression>
+          | <function-call>
+            | <identifier> calcular
+            | (
+            | <opt_actual_params>
+              | <actual-params>
+                | <expression>
+                  | <identifier> x
+                | ,
+                | <actual-param_list>
+                | <expression>
+                  | <identifier> y
+              | <actual-param_list>
+            | )
+  | ;
+| <program>
+  | <statement>
+    | <print-statement>
+      | print
+        | <identifier> x
+  | ;
+| <program>
+  | <statement>
+    | <print-statement>
+      | print
+        | <identifier> y
+  | ;
+| <program>
+  | <statement>
+    | <print-statement>
+      | print
+        | <identifier> resultado
+  | ;
+| <program>
+===
+
