@@ -1,38 +1,28 @@
-<div align="center">
-  
-# MINI-LANG-COMPILADOR
-*Compiler Architecture*
+# Mini-Lang Compiler
 
-![Language](https://img.shields.io/badge/LANGUAGE-MINI--LANG-5e2750?style=for-the-badge)
-![Target](https://img.shields.io/badge/TARGET-PYTHON-3776ab?style=for-the-badge&logo=python&logoColor=white)
-![Build](https://img.shields.io/badge/BUILD-DEVELOPMENT-black?style=for-the-badge)
+Este projeto implementa um transpilador da linguagem **Mini-Lang** para **Python**.  
+O compilador realiza as etapas de análise léxica, sintática, semântica e geração de código.
 
-</div>
+## Pré‑requisitos
 
----
+- Python 3.6 ou superior instalado.
 
-## VISÃO GERAL
+## Estrutura do Projeto
 
-O objetivo deste projeto é o desenvolvimento prático de um **COMPILADOR** para a linguagem Mini-Lang. O software realiza a leitura de códigos escritos em Mini-Lang e os traduz automaticamente para uma linguagem de alto nível. Onde a linguagem de alto nível escolhida foi o python.
+- `scanner.py` – Analisador léxico.  
+- `parser.py` – Analisador sintático, AST e analisador semântico.  
+- `codegen.py` – Gerador de código Python.  
+- `compilador.py` – Script principal que orquestra todas as fases.  
+- `bnf.txt` – Gramática da linguagem em notação EBNF.
 
----
+## Como Usar
 
-## ARQUITETURA
+1. Escreva um programa em Mini-Lang e salve com extensão `.minilang` (ex.: `exemplo.minilang`).
 
-> **1. Análise Léxica (Scanner)**
-> Conversão do código-fonte em uma sequência de tokens válidos, ignorando elementos não estruturais como comentários e espaços em branco.
+2. Execute o compilador passando o arquivo como argumento:
 
-> **2. Análise Sintática (Parser)**
-> Validação das regras gramaticais e mapeamento da estrutura do programa em uma Árvore Sintática Abstrata (AST).
+   ```bash
+   python compilador.py exemplo.minilang    
 
-> **3. Análise Semântica**
-> Análise de coerência lógica, garantindo a declaração prévia de variáveis, consistência de tipagem e respeito aos escopos.
-
-> **4. Geração de Código**
-> Transformação da AST em código Python válido, resultando em um script pronto para execução nativa.
-
----
-
-## COMO EXECUTAR
-
-Executa cada fase de forma individual dentro do seu próprio arquivo.
+3. Os tokens são printados quando o código é executado.
+4. A árvore sintática pode ser acessada no arquivo ast.txt 

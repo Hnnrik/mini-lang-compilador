@@ -215,6 +215,8 @@ class Scanner:
                 )
 
         tokens.append(Token("EOF", None, self.line  ))
+        print("\n=== TOKENS GERADOS ===\n")
+        print("Tokens:", tokens)
         return tokens
     
     def read(self, filename):
@@ -228,4 +230,3 @@ class Scanner:
             print("Arquivo não encontrado.")
         except LexerError as e:
             print("Erro léxico:", e)
-
